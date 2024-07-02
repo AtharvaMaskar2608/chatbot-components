@@ -1,10 +1,12 @@
 from typing import List, Dict
 import os
+import json
 
 # Importing Assembly AI libraries 
 import assemblyai as aai
 
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -21,25 +23,20 @@ def transcribe_audio(audio_file_path: str) -> List[Dict[str, str]]:
         - transcripts (arr): Array of dictionary of transcripts
     """
 
-    # Setting assembly ai api key 
-    aai.settings.api_key = os.getenv('ASSEMBLY_AI_API_KEY')
+    try:
+        aai.settings.api_key = os.getenv("ASSEMBLY_AI_API_KEY")
 
-    # Initializing transcriber
-    transcriber = aai.Transcriber()
+        config = aai.TranscriptionConfig(language_code='hi', speaker_labels=True, speakers_expected=2, punctuate=True)
 
-    # Config 
-    config = aai.TranscriptionConfig(speaker_labels=True, language_code='hi', punctuate=True, speakers_expected=2)
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(
+            audio_file_path,
+            config=config
+        )
 
-    # Transcribing audio 
-    transcript = transcriber.transcribe(audio_file_path, config)
+        return transcript.utterances
 
-    audio_transcript = []
-
-    for utterence in transcript.utterances:
-        audio_transcript.append({
-            "speaker": utterence.speaker, 
-            "text": utterence.text
-        })
-
-    return audio_transcript
+    except Exception as e:
+        print("Problem transcribing audio: ", e)
+        
 
