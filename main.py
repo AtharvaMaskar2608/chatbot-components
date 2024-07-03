@@ -2,10 +2,13 @@ from utils import *
 import pandas as pd
 import json
 # /home/choice/Desktop/chatbot-components/audio_calls/2/2b2719b9-9a98-4c04-80f1-2a97c917ad84.mp3
+import os 
 
 
 def main(audio_file_url: str, agentName: str):
+    print(audio_file_url)
     audio_file_url = f"/home/choice/Desktop/chatbot-components/audio_calls/2/{audio_file_url}.mp3"
+
 
     transcripts = transcribe_audio(audio_file_url)
 
@@ -22,36 +25,48 @@ def main(audio_file_url: str, agentName: str):
     print(f"Summary: {summary}")
 
     print(audio_transcripts)
-    didGreet = check_greeting(transcript=audio_transcripts)
+    didGreet = check_greeting(transcript=audio_transcripts, summary=summary)
     print(f"Greeting: {didGreet}")
     
 
     empathy_score = check_empathy(transcript=audio_transcripts, summary=summary)
     print("Empathy Score: ", empathy_score)
 
-    closure_score = check_closure(transcript=audio_transcripts)
+    closure_score = check_closure(transcript=audio_transcripts, summary=summary)
     print(f"Closure: {closure_score}")
+
+    query = get_query_type(transcript=audio_transcripts)
+    print(f"Query Type: {query}")
 
 
     data = {
-        "callLink": audio_file_url,
-        "Transcripts": [audio_transcripts],
-        "callerName": agentName,
-        "greetings": [didGreet], 
-        "empathy": [empathy_score], 
-        "closure": [closure_score], 
-        "summary": [summary]    
+        "Call URL": audio_file_url,
+        "Transcript": [audio_transcripts],
+        "Caller Name": agentName,
+        "Query Type": query,  
+        "Greetings": [didGreet], 
+        "Empathy": [empathy_score], 
+        "Closure": [closure_score], 
+        "Summary": [summary]    
     }
 
     return data
 
 if __name__ == "__main__":
 
-    df = pd.DataFrame(columns=['callLink', 'Transcripts', 'callerName', 'greetings', "empathy", "closure", "summary"])
+    df = pd.DataFrame(columns=['Call URL', 'Transcript', 'Caller Name', 'Query Type', "Greetings", "Empathy", "Closure", "Summary"])
 
     data = []
     with open("calls.json", 'r') as callsFile:
         data = json.load(callsFile)
+
+    # data = []
+
+    # folder_path = "/home/choice/Desktop/chatbot-components/audio_calls/0"
+
+    # for root, dirs, files in os.walk(folder_path):
+    #     for file in files:
+    #         data.append(file[:-4])
 
     for call in data:
         calls_url = call['calls']

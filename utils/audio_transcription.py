@@ -39,4 +39,3 @@ def transcribe_audio(audio_file_path: str) -> List[Dict[str, str]]:
     except Exception as e:
         print("Problem transcribing audio: ", e)
         
-
