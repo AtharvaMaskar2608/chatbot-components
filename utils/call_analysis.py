@@ -30,7 +30,7 @@ def check_greeting(transcript: str) -> bool:
     return completion.choices[0].message.content
 
 
-def check_empathy(transcript: str) -> int:
+def check_empathy(transcript: str, summary:str) -> int:
     """
     Description:
         - This function checks if the agent was empathetic towards the client. 
@@ -40,7 +40,7 @@ def check_empathy(transcript: str) -> int:
         - emapthy_score (int): Empathy score on a scale of 0 - 2. 0 - Not empathetic, 1 - Neutral, 2 - Empathetic
     """
 
-    system_prompt = """You are a professional Indian call manager, your job is to go through the call recording transcripts in Hindi and ensure that the agent was empathetic towards the customer. You have to consider both the Agent's dialogues as well as the customer's dialogues and mark the call recording on a scale of 0 to 2. 
+    system_prompt = """You are a professional Indian call manager, your job is to go through the call recording transcripts in Hindi along with generated summary and ensure that the agent was empathetic towards the customer. You have to consider both the Agent's dialogues as well as the customer's dialogues and mark the call recording as 0, 1 or 2. 
 
     Here's how you can mark the call:
 
@@ -51,16 +51,14 @@ def check_empathy(transcript: str) -> int:
     - Consider overall conversation of the transcript. 
 
     Marking for 1:
-    - The call cannot be classfied into 0 or 2.
+    - The call does not satisfy any condition in 0 or 2. Explain why would you give 1 and not 0 or 2.
     
-    Marking for 0 (Even if one matches):
+    Marking for 0 (Even if any one the below matches):
     - The call is disconnected either by the customer or the agent aprubtly without the issue being solved.
     - The agent quickly redirected the customer to email without addressing their concerns adequately on the call.
     - The call was placed on hold for an extended period (indicated in the transcript).
     - The agent's behavior was rude, impatient, uninterested, impolite.
-    - Agent was interupting the customer while speaking. 
-    - The agent ghosted the customer and did not reply. 
-    - The agent failed to provide clear guidance or misunderstood the customer's queries and there were communication gaps between the customer and the agent.
+    - Agent was interupting the customer while speaking.  
     - The agent blamed the customer or showed impatience instead of focusing on solutions.
     - The agent did not talk in the same language as the customer. that is, if the customer talked in English the agent talked in Hindi. 
     - The agent does not resolve the problem on the call. 
@@ -70,17 +68,37 @@ def check_empathy(transcript: str) -> int:
     - The customer seemed uninterested and lazy while answering the call.
 
 
-    From the above sitatuations, mark call transcripts for any other situations you might come accross with more accuracy. Reply with only 0, 1 or 2 without giving any explanation or other text.
+    From the above sitatuations, mark call transcripts for any other situations you might come accross with more accuracy. Reply with only 0, 1 or 2 without giving any explanation or other text. Do not assume the tone of the speaker through transcripts and always be strict because the bar is high and any sort of impoliteness is not tollerated with the customer.
     """
 
-    user_prompt = f"{transcript}, check how empathetic the agent was towards the client on a scale of 0 to 2"
+    new_prompt = """Based on the following transcript between the agent and the customer you have to evaluate only Agent's dialogue's performance, considering clarity and politeness. Provide a single overall score between 0 and 2, where 0 is poor, 1 is neutral, and 2 is good. Justify your rating with specific examples from the transcript. You can use the following criteria:
+
+    Criteria for 0:
+    - Agent was rude and mean to the customer. 
+    - Agent left the customer on hold or waiting too long. 
+
+
+    Criteria for 1:
+    - If there were a few problems from the agent's side, where the customer was being mean and the agent had to be neutral or a bit mean.
+    - If the agent tried to solve the problem, but it was not resolved till the end. 
+    
+    Criteria for 2:
+    - If the agent was very polite and understanding towards the customer, but still the customer seemed frustrated. Despite of all this the agent handled it with empathy and helped the customer. 
+    - If the call had a few major problems but got solved at the end and the agent assisted the customer eventually resolving the query.
+    - Or the call was smooth with few problems or no problems at all. 
+    - If the agent tried to solve the problem, but it was not resolved till the end but the agent gave a solution which the user did not think of or hadn't tried and was gonna try after the call.
+
+    Only follow the above crieterias. Just return the rating between 0 to 2, without any other text.
+    """
+
+    user_prompt = f"Transcript:{transcript}\n Summary: {summary}, check how empathetic the agent was towards the client on a scale of 0 to 2"
 
 
     completion = client.chat.completions.create(
         temperature=0,
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": new_prompt},
             {"role": "user", "content": user_prompt}
         ]
     )
@@ -124,7 +142,19 @@ def generate_sumary(transcript: str, agentName: str) -> str:
         - summary (str): Summary generated by open AI
     """
 
-    system_prompt = f"You are a professional Indian hindi sales call analyzer. Your work is to summarize a call and cover the following topics. Every call is an incoming call from the client to the company agent named {agentName}. In your summary cover the following .1. Who called whom. 2. Problem of the client 3. What did the Agent do to solve the problem. 3. Did he solve it properly 4. What were the problems faced during the calls. On the above paramteres generate a summary of the call in English."
+    system_prompt = f"""You are a professional Indian hindi sales call analyzer. Your work is to summarize a call and cover the following topics. Every call is an incoming call from the client to the company agent named {agentName}. In your summary cover the following .1. Who called whom. 2. Problem of the client 3. What did the Agent do to solve the problem. 3. Did he solve it properly from his end. On the above paramteres generate a detailed long summary of the call in English. Do not do both at once. Also clearly mention if:
+    - Agent was rude, mean or disrespectful towards the customer. 
+    - Agent left the customer on hold or waiting too long. 
+
+    -OR
+    - If there were a few problems from the agent's side, where the customer was being mean and the agent had to be neutral or a bit mean.
+    - If the agent tried to solve the problem, but it was not resolved till the end. 
+
+    - If the agent was very polite and understanding towards the customer, but still the customer seemed frustrated. Despite of all this the agent handled it with empathy and helped the customer. 
+    - If the call had a few major problems but got solved at the end and the agent assisted the customer eventually resolving the query.
+    - Or the call was smooth with few problems or no problems at all. 
+    - If the agent tried to solve the problem, but it was not resolved till the end but the agent gave a solution which the user did not think of or hadn't tried and was gonna try after the call.
+    """
 
     user_prompt = f"{transcript}, for the given transcript generate a summary. "
 
@@ -138,8 +168,3 @@ def generate_sumary(transcript: str, agentName: str) -> str:
     )
 
     return completion.choices[0].message.content
-
-if __name__ == "__main__":
-    trans = """Summary: The call was from the customer, Mr. Upadhyay, to the agent Ambika at Choice Phoenix. The customer had an issue with his trades where he was not able to see the profit amount for 2 out of 3 trades he made that day. The agent tried to explain to the customer about the profit showing up on the next day and the process of receiving the profit. However, the customer seemed to have difficulty understanding the concept and faced challenges in comprehending the agent's explanations. The customer also mentioned facing issues with withdrawals not reflecting in his account and not being able to withdraw the amount he had traded. The agent tried to reassure the customer and guide him on the process of receiving profits and withdrawals. Overall, the call seemed to have communication challenges and the customer was struggling to grasp the agent's explanations regarding his trading issues."""
-
-    print(check_empathy(trans))

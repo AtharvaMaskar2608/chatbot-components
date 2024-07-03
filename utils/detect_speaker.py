@@ -54,7 +54,7 @@ def pre_process_text(transcript: str, agentName: str, agentTag: str, customerTag
 
     # 1. Replacing agentTag with agentName
 
-    processed_transcripts = transcript.replace(agentTag, f"Agent: {agentName}")
+    processed_transcripts = transcript.replace(agentTag, f"Agent {agentName}: ")
 
 
     # 2. Replacing customer Tag with Customer
